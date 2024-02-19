@@ -1,8 +1,9 @@
 import express from "express";
+import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 
+dotenv.config();
 const app = express();
-
 app.use(express.json());
 
 app.get("/", (req, res) => {
