@@ -1,11 +1,20 @@
 import express from "express";
+import multer from "multer";
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-import { validationResult } from "express-validator";
-import UserModel from "./Models/User.js";
-import { registerValidation } from "./Validations/auth.js";
+import {
+  registerValidation,
+  loginValidation,
+  commentCreateValidation,
+} from "./Validations/auth.js";
+import { login, register, getMe } from "./Controllers/UserController.js";
+import {
+  createComment,
+  deleteComment,
+  getAllComments,
+  editComment,
+} from "./Controllers/CommentsController.js";
+import checkAuth from "./Utils/checkAuth.js";
 
 dotenv.config();
 mongoose
@@ -13,84 +22,32 @@ mongoose
   .then(() => console.log("Mongo connected successfully!"))
   .catch(err => console.log(err));
 const app = express();
-app.use(express.json());
-
-app.post("/auth/login", async (req, res) => {
-  try {
-    const user = await UserModel.findOne({ email: req.body.email });
-    if (!user) {
-      return res.status(404).json({
-        message: "Неверный логин или пароль",
-      });
-    }
-
-    const isValidPass = await bcrypt.compare(
-      req.body.password,
-      user.passwordHash
-    );
-
-    if (!isValidPass) {
-      return res.status(404).json({
-        message: "Неверный логин или пароль",
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        id: user._id,
-      },
-      process.env.SECRET_KEY,
-      {
-        expiresIn: "30d",
-      }
-    );
-    const { passwordHash, ...userData } = user._doc;
-
-    res.json({ ...userData, token });
-  } catch (error) {
-    res.status(500).json({
-      message: "Не удалось авторизоваться",
-    });
-  }
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => {
+    cb(null, "uploads");
+  },
+  filename: (_, file, cb) => {
+    cb(null, file.originalname);
+  },
 });
-app.post("/auth/register", registerValidation, async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json(errors.array());
-    }
-    const password = req.body.password;
-    const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(password, salt);
 
-    const doc = new UserModel({
-      userName: req.body.userName,
-      email: req.body.email,
-      passwordHash: hash,
-      avatarUrl: req.body.avatarUrl,
-    });
+const upload = multer({ storage });
+app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
-    const user = await doc.save();
+app.post("/auth/login", loginValidation, login);
+app.post("/auth/register", registerValidation, register);
+app.get("/auth/me", checkAuth, getMe);
 
-    const token = jwt.sign(
-      {
-        _id: user._id,
-      },
-      process.env.SECRET_KEY,
-      {
-        expiresIn: "30d",
-      }
-    );
+app.get("/comments", getAllComments);
+app.post("/comments", checkAuth, commentCreateValidation, createComment);
+app.delete("/comments/:id", checkAuth, deleteComment);
+app.patch("/comments/:id", checkAuth, commentCreateValidation, editComment);
 
-    const { passwordHash, ...userData } = user._doc;
-
-    res.json({ ...userData, token });
-  } catch (error) {
-    res.status(500).json({
-      error,
-      message: "Не удалось зарегистрироваться",
-    });
-  }
+app.post("/uploads", checkAuth, upload.single("image"), (req, res) => {
+  res.json({
+    url: `uploads/${req.file.originalname}`,
+  });
 });
 
 app.listen(process.env.PORT, err => {
