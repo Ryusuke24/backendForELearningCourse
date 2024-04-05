@@ -15,6 +15,8 @@ import {
   editComment,
 } from "./Controllers/CommentsController.js";
 import checkAuth from "./Utils/checkAuth.js";
+import handleValidationErrors from "./Utils/handleValidationErrors.js";
+import cors from "cors";
 
 dotenv.config();
 mongoose
@@ -33,18 +35,36 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 app.use(express.json());
+app.use(cors());
 app.use("/uploads", express.static("uploads"));
 
-app.post("/auth/login", loginValidation, login);
-app.post("/auth/register", registerValidation, register);
+app.post("/auth/login", loginValidation, handleValidationErrors, login);
+app.post(
+  "/auth/register",
+  registerValidation,
+  handleValidationErrors,
+  register
+);
 app.get("/auth/me", checkAuth, getMe);
 
 app.get("/comments", getAllComments);
-app.post("/comments", checkAuth, commentCreateValidation, createComment);
+app.post(
+  "/comments",
+  checkAuth,
+  commentCreateValidation,
+  handleValidationErrors,
+  createComment
+);
 app.delete("/comments/:id", checkAuth, deleteComment);
-app.patch("/comments/:id", checkAuth, commentCreateValidation, editComment);
+app.patch(
+  "/comments/:id",
+  checkAuth,
+  commentCreateValidation,
+  handleValidationErrors,
+  editComment
+);
 
-app.post("/uploads", checkAuth, upload.single("image"), (req, res) => {
+app.post("/uploads", upload.single("image"), (req, res) => {
   res.json({
     url: `uploads/${req.file.originalname}`,
   });

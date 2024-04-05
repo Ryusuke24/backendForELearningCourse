@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema(
     },
     avatarUrl: {
       type: String,
-      default: `${process.env.URL}/uploads/noAvatar.png`,
+      default: `http://localhost:4000/uploads/noAvatar.png`,
     },
     isAdmin: Boolean,
   },

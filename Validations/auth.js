@@ -6,7 +6,6 @@ export const registerValidation = [
     min: 5,
   }),
   body("userName", "Укажите ваш ник").isLength({ min: 3 }),
-  body("avatarUrl", "Неверная ссылка на аватарку").optional().isURL(),
 ];
 
 export const loginValidation = [
